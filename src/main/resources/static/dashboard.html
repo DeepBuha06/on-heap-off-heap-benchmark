@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FastStore HFT Terminal</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-color: #0b0c10;
+            --panel-bg: #1f2833;
+            --text-main: #c5c6c7;
+            --text-highlight: #66fcf1;
+            --accent: #45a29e;
+            --border: #333;
+        }
+        body { 
+            font-family: 'Consolas', 'Courier New', monospace; 
+            background-color: var(--bg-color); 
+            color: var(--text-main); 
+            margin: 0; 
+            padding: 20px; 
+            font-size: 14px;
+        }
+        header {
+            border-bottom: 2px solid var(--accent);
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        h1 { margin: 0; font-size: 1.5rem; color: var(--text-highlight); text-transform: uppercase; letter-spacing: 2px; }
+        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
+        .card { background-color: var(--panel-bg); padding: 15px; border: 1px solid var(--border); box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        .stat-value { font-size: 2rem; color: var(--text-highlight); margin-top: 5px; }
+        h2 { margin-top: 0; font-size: 1rem; color: var(--accent); text-transform: uppercase; border-bottom: 1px solid var(--border); padding-bottom: 5px; }
+        .ticker-row { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid var(--border); }
+        .ticker-symbol { font-weight: bold; color: var(--text-main); }
+        .ticker-price { color: #4ade80; }
+        
+        .market-data { grid-column: span 2; }
+        .telemetry { grid-column: span 1; }
+        
+        input { 
+            background-color: var(--bg-color); 
+            border: 1px solid var(--border); 
+            color: var(--text-highlight); 
+            padding: 8px; 
+            font-family: inherit;
+            width: calc(100% - 18px);
+            margin-bottom: 10px;
+        }
+        .btn { 
+            background-color: var(--accent); 
+            color: var(--bg-color); 
+            border: none; 
+            padding: 8px 15px; 
+            cursor: pointer; 
+            font-weight: bold;
+            font-family: inherit;
+            text-transform: uppercase;
+        }
+        .btn:hover { background-color: var(--text-highlight); }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>FastStore Market Data Terminal</h1>
+        <div>STATUS: <span style="color: #4ade80;">ONLINE</span> | MODE: HFT ENGINE</div>
+    </header>
+    
+    <div class="grid">
+        <div class="card telemetry">
+            <h2>System Telemetry</h2>
+            <div style="margin-bottom: 15px;">
+                <div style="color: var(--text-main); font-size: 0.9rem;">THROUGHPUT (REQ)</div>
+                <div class="stat-value" id="reqs">0</div>
+            </div>
+            <div style="margin-bottom: 15px;">
+                <div style="color: var(--text-main); font-size: 0.9rem;">LATENCY (MS)</div>
+                <div class="stat-value" id="latency">0.0000</div>
+            </div>
+            <div>
+                <div style="color: var(--text-main); font-size: 0.9rem;">HEAP USAGE (MB)</div>
+                <div class="stat-value" id="heap">0</div>
+            </div>
+        </div>
+
+        <div class="card market-data">
+            <h2>Live Order Book Feed</h2>
+            <div id="ticker-feed">
+                <!-- Ticker rows will be injected here -->
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Manual Query Exec</h2>
+            <input type="text" id="keyInput" placeholder="ENTER KEY (e.g. TICKER:AAPL)">
+            <input type="text" id="valueInput" placeholder="ENTER VALUE FOR OVERRIDE">
+            <div style="display: flex; gap: 10px;">
+                <button class="btn" onclick="putData()">EXEC PUT</button>
+                <button class="btn" onclick="getData()">EXEC GET</button>
+            </div>
+            <div id="result" style="color: #4ade80; margin-top: 15px; word-break: break-all;"></div>
+        </div>
+    </div>
+
+    <script>
+        const symbols = ["AAPL", "TSLA", "NVDA", "AMZN", "MSFT", "GOOGL", "META", "BRK.B"];
+        
+        async function fetchMetrics() {
+            try {
+                const res = await fetch('/api/metrics');
+                const data = await res.json();
+                document.getElementById('reqs').innerText = data.totalRequests.toLocaleString();
+                document.getElementById('latency').innerText = data.averageLatencyMs.toFixed(4);
+                document.getElementById('heap').innerText = `${data.heapUsedMb} / ${data.heapMaxMb}`;
+            } catch(e) { console.error("Telemetry failure:", e); }
+        }
+
+        async function fetchMarketData() {
+            try {
+                let html = '';
+                for (const sym of symbols) {
+                    const res = await fetch(`/api/heap?key=TICKER:${sym}`);
+                    const val = await res.text();
+                    if (val !== "NOT_FOUND" && val.startsWith("{")) {
+                        const parsed = JSON.parse(val);
+                        html += `
+                        <div class="ticker-row">
+                            <span class="ticker-symbol">${sym}</span>
+                            <span class="ticker-price">$${parsed.price.toFixed(2)}</span>
+                            <span>VOL: ${parsed.volume}</span>
+                            <span style="color: #666;">TS: ${parsed.ts}</span>
+                        </div>`;
+                    }
+                }
+                document.getElementById('ticker-feed').innerHTML = html;
+            } catch (e) { console.error("Feed failure:", e); }
+        }
+
+        setInterval(fetchMetrics, 500);
+        setInterval(fetchMarketData, 200); // 5 FPS market data feed
+
+        async function putData() {
+            const key = document.getElementById('keyInput').value;
+            const value = document.getElementById('valueInput').value;
+            try {
+                const res = await fetch(`/api/heap?key=${key}&value=${value}`, { method: 'POST' });
+                document.getElementById('result').innerText = `> PUT_ACK: ${await res.text()}`;
+            } catch(e) {
+                document.getElementById('result').innerText = `> ERR: ${e}`;
+                document.getElementById('result').style.color = "#ef4444";
+            }
+        }
+
+        async function getData() {
+            const key = document.getElementById('keyInput').value;
+            try {
+                const res = await fetch(`/api/heap?key=${key}`);
+                document.getElementById('result').innerText = `> READ: ${await res.text()}`;
+                document.getElementById('result').style.color = "#4ade80";
+            } catch(e) {
+                document.getElementById('result').innerText = `> ERR: ${e}`;
+                document.getElementById('result').style.color = "#ef4444";
+            }
+        }
+    </script>
+</body>
+</html>

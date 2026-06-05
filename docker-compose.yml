@@ -1,0 +1,18 @@
+services:
+  faststore:
+    build: .
+    container_name: faststore-node
+    ports:
+      - "8080:8080" # Web UI and HTTP API
+      - "9090:9090" # Raw TCP Socket
+    volumes:
+      # Mount the data directory so the WAL survives container restarts
+      - faststore_data:/app/data
+    environment:
+      - KVSTORE_MEMORY_CAPACITY_MB=100
+      - KVSTORE_TABLE_SIZE=200000
+      - KVSTORE_DATA_FILE=/app/data/kvstore_data.bin
+    restart: unless-stopped
+
+volumes:
+  faststore_data:

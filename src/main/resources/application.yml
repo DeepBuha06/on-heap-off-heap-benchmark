@@ -1,0 +1,6 @@
+server:
+  port: 8080
+
+kvstore:
+  memory-capacity-mb: 100
+  table-size: 200000
