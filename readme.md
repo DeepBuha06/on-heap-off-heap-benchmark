@@ -87,6 +87,17 @@ docker-compose up -d --build
 
 ---
 
+## Prototype Limitations (True Production HFT)
+
+This project serves as an architectural prototype to demonstrate lock-free concurrency and off-heap memory management. However, in a true Tier-1 production HFT environment (e.g., Jump Trading, Citadel), this design would face the following known bottlenecks:
+
+* **The HTTP/REST Bottleneck:** The internal engine runs at $3\mu s$, but the REST API over TCP introduces OS network stack overhead ($200\mu s+$). A true production system would strip out HTTP in favor of Kernel-Bypass UDP messaging (e.g., Agrona Aeron) or raw sockets with Simple Binary Encoding (SBE).
+* **MappedByteBuffer Page Faults:** While `mmap` is fast, if the OS hasn't allocated a physical RAM page for a specific offset, writing to it triggers a "Hard Page Fault", freezing the thread and causing massive latency spikes (Jitter). True HFT uses `sun.misc.Unsafe` or the FFM API to pre-allocate and pre-fault native memory arenas upfront.
+* **The 2GB Boundary:** Java's `MappedByteBuffer` uses 32-bit integer indexing, hard-capping a single buffer at 2GB.
+* **Collision Cascading:** As the `AtomicLongArray` (Open Addressing) crosses a 60% fill factor, hash collisions cause severe CPU cache-line thrashing in the CAS retry loop. Production architectures segment this into cache-conscious buckets.
+
+---
+
 ## Future Scopes
 
 * <img src="https://raw.githubusercontent.com/feathericons/feather/master/icons/share-2.svg" width="16" height="16"/> **Distributed Replication (Raft Consensus):** Upgrading the engine from a single-node instance into a distributed cluster. This involves writing a custom TCP networking layer using Netty to replicate the Write-Ahead Log (WAL) to follower nodes, ensuring Zero-Data-Loss consensus.
