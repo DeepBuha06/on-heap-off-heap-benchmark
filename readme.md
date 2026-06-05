@@ -19,19 +19,25 @@
 FastStore completely bypasses JVM Garbage Collection by serializing data directly into off-heap native memory. This architecture guarantees microsecond latency under extreme loads without any "Stop-The-World" pauses.
 
 ```mermaid
-graph TD
-    Client[Market Data Generator] -->|TCP / HTTP| API[FastStore REST API]
-    API --> Engine[Off-Heap Engine]
+graph TD;
+    Client[Market Data Generator] -->|TCP / HTTP| API[FastStore REST API];
+    API --> Engine[Off-Heap Engine];
     
-    subgraph "Zero-GC Core"
-        Engine -->|CAS Pointer Update| Index[AtomicLongArray Index]
-        Engine -->|Write Bytes| RingBuffer[Lock-Free Ring Buffer]
+    subgraph Core [Zero-GC Core]
+        Index[AtomicLongArray Index]
+        RingBuffer[Lock-Free Ring Buffer]
     end
     
-    subgraph "Operating System Layer"
-        RingBuffer -->|mmap| OSPage[OS Page Cache]
-        OSPage -.->|Async Flush| Disk[(SSD: kvstore_data.bin)]
+    Engine -->|CAS Pointer Update| Index;
+    Engine -->|Write Bytes| RingBuffer;
+    
+    subgraph OS [Operating System Layer]
+        OSPage[OS Page Cache]
+        Disk[(SSD: kvstore_data.bin)]
     end
+    
+    RingBuffer -->|mmap| OSPage;
+    OSPage -.->|Async Flush| Disk;
 ```
 
 ---
