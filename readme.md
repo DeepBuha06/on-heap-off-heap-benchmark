@@ -2,7 +2,7 @@
   <h1>FastStore: Zero-GC Off-Heap Key-Value Engine</h1>
 
   <p>
-    <b>A hyper-optimized, low-latency, in-memory database engineered for High-Frequency Trading (HFT) environments.</b>
+    <b>An educational architectural prototype exploring Zero-GC, off-heap mechanics, and lock-free concurrency, inspired by High-Frequency Trading (HFT) concepts.</b>
   </p>
 
   <p>
@@ -16,7 +16,7 @@
 
 ## System Architecture
 
-FastStore completely bypasses JVM Garbage Collection by serializing data directly into off-heap native memory. This architecture guarantees microsecond latency under extreme loads without any "Stop-The-World" pauses.
+FastStore completely bypasses JVM Garbage Collection by serializing data directly into off-heap native memory. This architecture explores deterministic latency under extreme loads without any "Stop-The-World" pauses.
 
 ```mermaid
 graph TD;
@@ -44,7 +44,7 @@ graph TD;
 
 ## Core Infrastructure
 
-* <img src="https://raw.githubusercontent.com/feathericons/feather/master/icons/cpu.svg" width="16" height="16"/> **Zero-GC Off-Heap Memory:** Data is written directly to a `MappedByteBuffer` instead of allocating Java objects, preventing GC overhead and providing ultra-low, deterministic latency.
+* <img src="https://raw.githubusercontent.com/feathericons/feather/master/icons/cpu.svg" width="16" height="16"/> **Zero-GC Off-Heap Memory:** Data is written directly to a `MappedByteBuffer` instead of allocating Java objects, preventing GC overhead.
 * <img src="https://raw.githubusercontent.com/feathericons/feather/master/icons/zap.svg" width="16" height="16"/> **Lock-Free Concurrency:** Replaced slow `synchronized` blocks with a custom `AtomicLongArray` hash map utilizing hardware-level Compare-And-Swap (CAS) instructions.
 * <img src="https://raw.githubusercontent.com/feathericons/feather/master/icons/database.svg" width="16" height="16"/> **Zero-Latency Durability (WAL):** Utilizes Memory-Mapped Files (mmap) to act as a Write-Ahead Log. The engine writes to RAM at ~10ns, and the OS kernel asynchronously flushes dirty pages to the SSD in the background.
 * <img src="https://raw.githubusercontent.com/feathericons/feather/master/icons/refresh-cw.svg" width="16" height="16"/> **Lock-Free Ring Buffer:** Designed to run infinitely without OutOfMemory errors by wrapping memory pointers when capacity is reached.
@@ -78,8 +78,9 @@ docker-compose up -d --build
 
 | Metric | Result | Explanation |
 | :--- | :--- | :--- |
-| **Latency (Warmed Up)** | `0.0034 ms` | The time taken to process a complete GET/PUT request. |
-| **Max Throughput** | `50,000+ RPS` | Maximum requests processed per second without CPU bottlenecking. |
+| **Isolated Engine Latency** | `0.0034 ms` | The raw time taken for a CAS index update and mmap write (warmed up). |
+| **End-to-End System Latency** | `~0.2 ms` | Includes the overhead of the OS network stack and HTTP parsing. |
+| **Max Throughput** | `50,000+ RPS` | Maximum requests processed per second (Bottlenecked by the REST API, not the lock-free map). |
 | **Heap Usage** | `~20 MB` | The JVM Heap is virtually empty because all data lives in native OS memory. |
 
 > [!NOTE]
