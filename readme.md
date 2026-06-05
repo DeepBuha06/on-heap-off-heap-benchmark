@@ -99,7 +99,8 @@ This project serves as an architectural prototype to demonstrate lock-free concu
 
 ---
 
-## Future Scopes
+## Future Engineering Roadmap
 
-* <img src="https://raw.githubusercontent.com/feathericons/feather/master/icons/share-2.svg" width="16" height="16"/> **Distributed Replication (Raft Consensus):** Upgrading the engine from a single-node instance into a distributed cluster. This involves writing a custom TCP networking layer using Netty to replicate the Write-Ahead Log (WAL) to follower nodes, ensuring Zero-Data-Loss consensus.
-* <img src="https://raw.githubusercontent.com/feathericons/feather/master/icons/target.svg" width="16" height="16"/> **Vector Embeddings (AI):** Extending the engine to support serialization of high-dimensional floating-point arrays for ultra-fast, off-heap Cosine Similarity searches used in LLM/RAG architectures.
+* <img src="https://raw.githubusercontent.com/feathericons/feather/master/icons/cpu.svg" width="16" height="16"/> **Phase 1: Core Hardening:** Strip out the HTTP layer and implement raw TCP sockets with Simple Binary Encoding (SBE) or Kernel-Bypass UDP (Agrona). Migrate from `MappedByteBuffer` to the Java 21+ FFM API (`MemorySegment`) to bypass the 2GB limit and pre-fault memory. Segment the hash map into cache-aligned (64-byte) buckets to eliminate L1 cache thrashing.
+* <img src="https://raw.githubusercontent.com/feathericons/feather/master/icons/share-2.svg" width="16" height="16"/> **Phase 2: Distributed Consensus (Raft):** Build a custom TCP networking layer to replicate the Write-Ahead Log (WAL) to follower nodes, implementing Leader Election and ensuring Zero-Data-Loss fault tolerance.
+* <img src="https://raw.githubusercontent.com/feathericons/feather/master/icons/target.svg" width="16" height="16"/> **Phase 3: Application Layer (AI/Vectors):** Extend the stabilized, distributed engine to support serialization of high-dimensional floating-point arrays, enabling ultra-fast, off-heap Cosine Similarity searches for LLM/RAG architectures.
